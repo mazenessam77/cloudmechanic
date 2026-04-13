@@ -103,7 +103,8 @@ Security Issues (3):
 ### Homebrew (macOS / Linux)
 
 ```bash
-brew install mazenessam77/tap/cloudmechanic
+brew tap mazenessam77/tap
+brew install cloudmechanic
 ```
 
 ### Go Install
