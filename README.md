@@ -69,7 +69,17 @@ Security Issues (3):
          "Effect": "Allow",
          "Action": [
            "ec2:DescribeVolumes",
-           "ec2:DescribeSecurityGroups"
+           "ec2:DescribeSecurityGroups",
+           "ec2:DescribeAddresses",
+           "ec2:DescribeSnapshots",
+           "ec2:DescribeRegions",
+           "s3:ListAllMyBuckets",
+           "s3:GetPublicAccessBlock",
+           "rds:DescribeDBInstances",
+           "cloudwatch:GetMetricData",
+           "iam:ListUsers",
+           "iam:ListMFADevices",
+           "sts:GetCallerIdentity"
          ],
          "Resource": "*"
        }
@@ -117,16 +127,40 @@ cloudmechanic scan
 cloudmechanic scan --region us-west-2
 ```
 
+### Scan All Regions
+
+```bash
+cloudmechanic scan --all-regions
+```
+
 ### Use a Named AWS Profile
 
 ```bash
 cloudmechanic scan --profile production
 ```
 
+### JSON Output (for CI/CD pipelines)
+
+```bash
+cloudmechanic scan -o json
+```
+
+### CSV Output (for spreadsheets)
+
+```bash
+cloudmechanic scan -o csv > report.csv
+```
+
+### Check Version
+
+```bash
+cloudmechanic version
+```
+
 ### Combine Flags
 
 ```bash
-cloudmechanic scan --profile staging --region eu-west-1
+cloudmechanic scan --profile staging --region eu-west-1 -o json
 ```
 
 ## Current Scanners
@@ -135,17 +169,24 @@ cloudmechanic scan --profile staging --region eu-west-1
 |---------|------|---------------|
 | **Unattached EBS** | Cost Leak | EBS volumes in `available` state (not attached to any instance) |
 | **Open Security Groups** | Security | Security groups allowing `0.0.0.0/0` or `::/0` ingress on port 22 |
+| **Public S3 Buckets** | Security | Buckets without full S3 Block Public Access enabled |
+| **IAM Users Without MFA** | Security | IAM users with no MFA device enabled |
+| **Idle RDS Instances** | Cost Leak | RDS instances with 0 connections over the last 7 days |
+| **Unused Elastic IPs** | Cost Leak | Elastic IPs not associated with any resource ($3.60/mo each) |
+| **Old EBS Snapshots** | Cost Leak | EBS snapshots older than 90 days |
 
 ## Roadmap
 
-- [ ] Unused Elastic IPs
-- [ ] Public S3 Buckets
-- [ ] IAM Users without MFA
-- [ ] Idle RDS Instances (low CPU over 14 days)
-- [ ] Old EBS Snapshots (>90 days)
-- [ ] JSON / CSV output formats
-- [ ] Multi-region scanning
+- [x] Unused Elastic IPs
+- [x] Public S3 Buckets
+- [x] IAM Users without MFA
+- [x] Idle RDS Instances (0 connections over 7 days)
+- [x] Old EBS Snapshots (>90 days)
+- [x] JSON / CSV output formats (`--output json`, `--output csv`)
+- [x] Multi-region scanning (`--all-regions`)
 - [ ] Custom severity thresholds
+- [ ] HTML report export
+- [ ] Slack / webhook notifications
 
 ## Contributing
 

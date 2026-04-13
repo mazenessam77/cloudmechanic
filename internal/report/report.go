@@ -1,6 +1,8 @@
 package report
 
 import (
+	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
@@ -18,8 +20,20 @@ var (
 	dim      = color.New(color.Faint)
 )
 
-// Print renders the scan results to the given writer.
-func Print(w io.Writer, issues []scanner.Issue, errors []error, elapsed time.Duration) {
+// Print renders the scan results in the specified format.
+func Print(w io.Writer, issues []scanner.Issue, errors []error, elapsed time.Duration, format string) {
+	switch format {
+	case "json":
+		printJSON(w, issues, errors, elapsed)
+	case "csv":
+		printCSV(w, issues)
+	default:
+		printTable(w, issues, errors, elapsed)
+	}
+}
+
+// printTable renders the color-coded terminal report.
+func printTable(w io.Writer, issues []scanner.Issue, errors []error, elapsed time.Duration) {
 	fmt.Fprintln(w)
 	header.Fprintln(w, "=== CloudMechanic Scan Report ===")
 	fmt.Fprintln(w)
@@ -78,6 +92,72 @@ func printSummary(w io.Writer, issues []scanner.Issue, elapsed time.Duration) {
 	warning.Fprintf(w, "%d warnings", warnCount)
 	fmt.Fprintln(w, ")")
 	fmt.Fprintln(w)
+}
+
+// jsonReport is the structure written for JSON output.
+type jsonReport struct {
+	Summary jsonSummary    `json:"summary"`
+	Issues  []jsonIssue    `json:"issues"`
+	Errors  []string       `json:"errors,omitempty"`
+}
+
+type jsonSummary struct {
+	Total    int    `json:"total"`
+	Critical int    `json:"critical"`
+	Warnings int    `json:"warnings"`
+	Elapsed  string `json:"elapsed"`
+}
+
+type jsonIssue struct {
+	Severity    string `json:"severity"`
+	Scanner     string `json:"scanner"`
+	ResourceID  string `json:"resource_id"`
+	Description string `json:"description"`
+	Suggestion  string `json:"suggestion"`
+}
+
+func printJSON(w io.Writer, issues []scanner.Issue, errors []error, elapsed time.Duration) {
+	r := jsonReport{
+		Summary: jsonSummary{
+			Total:    len(issues),
+			Critical: len(filterBySeverity(issues, scanner.SeverityCritical)),
+			Warnings: len(filterBySeverity(issues, scanner.SeverityWarning)),
+			Elapsed:  elapsed.Round(time.Millisecond).String(),
+		},
+	}
+
+	for _, issue := range issues {
+		r.Issues = append(r.Issues, jsonIssue{
+			Severity:    issue.Severity.String(),
+			Scanner:     issue.Scanner,
+			ResourceID:  issue.ResourceID,
+			Description: issue.Description,
+			Suggestion:  issue.Suggestion,
+		})
+	}
+
+	for _, err := range errors {
+		r.Errors = append(r.Errors, err.Error())
+	}
+
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	enc.Encode(r)
+}
+
+func printCSV(w io.Writer, issues []scanner.Issue) {
+	cw := csv.NewWriter(w)
+	cw.Write([]string{"severity", "scanner", "resource_id", "description", "suggestion"})
+	for _, issue := range issues {
+		cw.Write([]string{
+			issue.Severity.String(),
+			issue.Scanner,
+			issue.ResourceID,
+			issue.Description,
+			issue.Suggestion,
+		})
+	}
+	cw.Flush()
 }
 
 func filterBySeverity(issues []scanner.Issue, sev scanner.Severity) []scanner.Issue {
