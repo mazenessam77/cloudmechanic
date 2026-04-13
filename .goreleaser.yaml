@@ -1,0 +1,66 @@
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: cloudmechanic
+    main: .
+    binary: cloudmechanic
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.commit={{.ShortCommit}} -X main.date={{.Date}}
+
+archives:
+  - id: default
+    format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        format: zip
+
+checksum:
+  name_template: "checksums.txt"
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "^ci:"
+
+brews:
+  - repository:
+      owner: "cloudmechanic"
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    directory: Formula
+    homepage: "https://github.com/cloudmechanic/cloudmechanic"
+    description: "An OBD scanner for your AWS environment. Find cost leaks and security vulnerabilities in seconds."
+    license: "MIT"
+    install: |
+      bin.install "cloudmechanic"
+    test: |
+      system "#{bin}/cloudmechanic", "--help"
+
+release:
+  github:
+    owner: "cloudmechanic"
+    name: cloudmechanic
+  draft: false
+  prerelease: auto
+  name_template: "CloudMechanic v{{ .Version }}"
